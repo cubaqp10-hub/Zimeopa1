@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Roblox Script Hub</title>
+<style>
+body{margin:0;font-family:Arial;background:#0f1220;color:#fff}
+header{background:#11162a;padding:15px;text-align:center;position:relative}
+.box{border:1px solid #333;padding:12px;margin:12px;border-radius:8px}
+input,textarea,select,button{width:100%;padding:6px;margin:5px 0;box-sizing:border-box}
+button{cursor:pointer;background:#1e90ff;border:none;color:white;border-radius:6px}
+button:hover{opacity:.9}
+.hidden{display:none}
+img{border-radius:6px}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>🚀 Roblox Script Hub</h2>
+  <div id="roleText"></div>
+
+  <!-- CHỌN NGÔN NGỮ -->
+  <div style="position:absolute;top:10px;right:10px;">
+    <select id="langSelect" onchange="changeLang()">
+      <option value="vi">🇻🇳 Việt Nam</option>
+      <option value="en">🇺🇸 English</option>
+      <option value="jp">🇯🇵 日本語</option>
+      <option value="kr">🇰🇷 한국어</option>
+    </select>
+  </div>
+</header>
+
+<!-- OWNER KEY -->
+<div id="ownerKeyBox" class="box">
+  <h3>🔑 Owner Key</h3>
+  <input id="ownerKeyInput" placeholder="Nhập Owner Key">
+  <button onclick="checkOwnerKey()">Xác nhận</button>
+</div>
+
+<!-- MENU OWNER -->
+<div id="ownerMenu" class="box hidden">
+  <h3>👑 Menu Owner</h3>
+  <input id="rankName" placeholder="Tên người dùng">
+  <select id="rankType">
+    <option value="admin">Admin</option>
+    <option value="user">User</option>
+  </select>
+  <button onclick="setRank()">Cấp Rank</button>
+</div>
+
+<!-- THÊM SCRIPT -->
+<div id="addScriptBox" class="box hidden">
+  <h3>➕ Thêm Script Roblox</h3>
+  <input id="gameName" placeholder="Tên game (VD: Blox Fruits)">
+  <input id="gameImage" placeholder="Link ảnh game (URL)">
+  <input id="scriptName" placeholder="Tên script">
+  <select id="scriptKeyType">
+    <option>No Key</option>
+    <option>Có Key</option>
+  </select>
+  <textarea id="scriptCode" rows="5" placeholder="Dán script Roblox vào đây"></textarea>
+  <button onclick="addScript()">Gửi Script</button>
+</div>
+
+<!-- DUYỆT SCRIPT -->
+<div id="approveBox" class="box hidden">
+  <h3>🛡️ Duyệt Script</h3>
+  <div id="approveList"></div>
+</div>
+
+<!-- TÌM GAME -->
+<div class="box">
+  <h3>🎮 Nhập tên game</h3>
+  <input id="searchGame" placeholder="VD: Blox Fruits">
+  <button onclick="showScripts()">Xem Script</button>
+</div>
+
+<div id="scriptList"></div>
+
+<script>
+/* ===== CONFIG ===== */
+let OWNER_KEY="OWNER-2026-MANH";
+
+/* ===== DATA ===== */
+let role=localStorage.getItem("role")||"user";
+let scriptsDB=JSON.parse(localStorage.getItem("scriptsDB"))||[];
+let ranks=JSON.parse(localStorage.getItem("ranks"))||{};
+let lang=localStorage.getItem("lang")||"vi";
+
+/* ===== NGÔN NGỮ ===== */
+const LANG_TEXT={
+vi:{title:"Roblox Script Hub",add:"Thêm Script Roblox",approve:"Duyệt Script",search:"Nhập tên game",no:"Chưa có script"},
+en:{title:"Roblox Script Hub",add:"Add Script",approve:"Approve Script",search:"Enter game name",no:"No scripts"},
+jp:{title:"Roblox スクリプト集",add:"スクリプト追加",approve:"承認",search:"ゲーム名入力",no:"スクリプトなし"},
+kr:{title:"로블록스 스크립트",add:"스크립트 추가",approve:"승인",search:"게임 이름 입력",no:"스크립트 없음"}
+};
+
+/* ===== INIT ===== */
+updateUI();
+loadApprove();
+applyLang();
+document.getElementById("langSelect").value=lang;
+
+/* ===== UI ===== */
+function updateUI(){
+  roleText.innerText="Quyền: "+role.toUpperCase();
+  if(role==="owner"){
+    ownerKeyBox.style.display="none";
+    ownerMenu.classList.remove("hidden");
+    addScriptBox.classList.remove("hidden");
+    approveBox.classList.remove("hidden");
+  }
+  if(role==="admin"){
+    ownerKeyBox.style.display="none";
+    addScriptBox.classList.remove("hidden");
+    approveBox.classList.remove("hidden");
+  }
+}
+
+/* ===== OWNER ===== */
+function checkOwnerKey(){
+  if(ownerKeyInput.value===OWNER_KEY){
+    role="owner";
+    localStorage.setItem("role","owner");
+    alert("👑 Bạn đã là OWNER");
+    updateUI();
+  }else alert("❌ Sai key");
+}
+
+function setRank(){
+  let n=rankName.value.trim();
+  let t=rankType.value;
+  if(!n)return alert("Nhập tên");
+  ranks[n]=t;
+  localStorage.setItem("ranks",JSON.stringify(ranks));
+  alert("✅ Đã cấp "+t+" cho "+n);
+}
+
+/* ===== SCRIPT ===== */
+function addScript(){
+  let game=gameName.value.trim();
+  let img=gameImage.value.trim();
+  let name=scriptName.value.trim();
+  let code=scriptCode.value.trim();
+  let keyType=scriptKeyType.value;
+  if(!game||!name||!code)return alert("❌ Thiếu thông tin");
+
+  scriptsDB.push({
+    game,image:img,name,code,keyType,
+    approved:role==="owner",
+    time:new Date().toLocaleString()
+  });
+  localStorage.setItem("scriptsDB",JSON.stringify(scriptsDB));
+  alert("✅ Đã gửi – chờ duyệt");
+  scriptCode.value="";
+  loadApprove();
+}
+
+/* ===== DUYỆT ===== */
+function loadApprove(){
+  if(role!=="owner"&&role!=="admin")return;
+  let html="";
+  scriptsDB.forEach((s,i)=>{
+    if(!s.approved){
+      html+=`
+      <div class="box">
+        <b>${s.name}</b> – ${s.game}
+        <button onclick="approveScript(${i})">Duyệt</button>
+      </div>`;
+    }
+  });
+  approveList.innerHTML=html||"Không có script chờ duyệt";
+}
+
+function approveScript(i){
+  scriptsDB[i].approved=true;
+  localStorage.setItem("scriptsDB",JSON.stringify(scriptsDB));
+  loadApprove();
+  alert("✅ Đã duyệt");
+}
+
+/* ===== HIỂN THỊ ===== */
+function showScripts(){
+  let game=searchGame.value.trim().toLowerCase();
+  let list=scriptsDB.filter(s=>s.approved&&s.game.toLowerCase()===game);
+  let html="";
+  if(list.length===0)html="<p>"+LANG_TEXT[lang].no+"</p>";
+  list.forEach(s=>{
+    html+=`
+    <div class="box">
+      ${s.image?`<img src="${s.image}" style="width:100%;max-height:150px;object-fit:cover">`:""}
+      <b>${s.name}</b> | ${s.keyType}<br>
+      <small>${s.time}</small>
+      <textarea readonly rows="4">${s.code}</textarea>
+    </div>`;
+  });
+  scriptList.innerHTML=html;
+}
+
+/* ===== NGÔN NGỮ ===== */
+function changeLang(){
+  lang=document.getElementById("langSelect").value;
+  localStorage.setItem("lang",lang);
+  applyLang();
+}
+function applyLang(){
+  document.querySelector("header h2").innerText="🚀 "+LANG_TEXT[lang].title;
+  document.querySelector("#addScriptBox h3").innerText="➕ "+LANG_TEXT[lang].add;
+  document.querySelector("#approveBox h3").innerText="🛡️ "+LANG_TEXT[lang].approve;
+  document.querySelector(".box h3").innerText="🎮 "+LANG_TEXT[lang].search;
+}
+</script>
+
+</body>
+  </html>
