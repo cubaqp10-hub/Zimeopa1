@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roblox Script Hub</title>
+
+<style>
+body{margin:0;font-family:Arial;background:#0e0f16;color:#fff}
+header{padding:14px;text-align:center;font-size:22px;font-weight:900;
+background:linear-gradient(135deg,#7a5cff,#00d4ff)}
+.container{max-width:1100px;margin:auto;padding:10px}
+.card{background:#16182a;padding:12px;border-radius:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+input,select,textarea,button{
+width:100%;padding:8px;border-radius:10px;border:none;margin:5px 0
+}
+button{background:#7a5cff;color:#fff;font-weight:800;cursor:pointer}
+button:hover{opacity:.85}
+.hidden{display:none}
+pre{background:#0b0c1a;padding:10px;border-radius:10px;font-size:12px;overflow:auto}
+.badge{font-size:12px;padding:3px 7px;border-radius:999px;display:inline-block;margin-bottom:5px}
+.ok{background:#00c853}
+</style>
+</head>
+
+<body>
+<header>🚀 Roblox Script Hub — Owner System</header>
+
+<div class="container">
+
+<!-- 👑 OWNER KEY (1 LẦN) -->
+<div id="ownerKeyBox" class="card">
+  <h3>👑 Kích hoạt Owner</h3>
+  <p>Chỉ nhập 1 lần duy nhất</p>
+  <input id="ownerKeyInput" placeholder="Nhập OWNER KEY">
+  <button onclick="useOwnerKey()">Xác nhận</button>
+</div>
+
+<!-- LOGIN -->
+<div id="loginBox" class="card">
+  <h3>Đăng nhập</h3>
+  <input id="lu" placeholder="Username">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- 👑 OWNER PANEL -->
+<div id="rankPanel" class="card hidden">
+  <h3>👑 Quản lý Rank (Owner)</h3>
+  <input id="rankUser" placeholder="Username người chơi">
+  <select id="rankRole">
+    <option>ADMIN</option>
+    <option>SUPPORT</option>
+    <option>USER</option>
+  </select>
+  <button onclick="setRank()">✔ Cấp / Đổi rank</button>
+  <button onclick="removeRank()">❌ Thu hồi quyền</button>
+</div>
+
+<!-- 🧾 LOG ADMIN -->
+<div id="logPanel" class="card hidden">
+  <h3>🧾 Log Admin (Owner)</h3>
+  <button onclick="clearLogs()">🗑️ Xóa log</button>
+  <pre id="logBox" style="max-height:300px;overflow:auto"></pre>
+</div>
+
+<!-- 🛡️ ADMIN PANEL -->
+<div id="adminPanel" class="card hidden">
+  <h3>🛡️ Thêm Script</h3>
+  <input id="sName" placeholder="Tên script">
+  <select id="sGame"></select>
+  <textarea id="sCode" placeholder="Lua script Roblox"></textarea>
+  <button onclick="addScript()">➕ Thêm Script</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<!-- SEARCH -->
+<div class="card">
+  <input id="search" placeholder="🔍 Tìm script..." oninput="render()">
+  <select id="gameFilter" onchange="render()"></select>
+</div>
+
+<!-- SCRIPT LIST -->
+<div id="list" class="grid"></div>
+
+</div>
+
+<script>
+// ===== OWNER KEY (1 LẦN) =====
+let OWNER_KEY = "OWNER-2026-MANH"; // 🔑 đổi key này
+
+// ===== DATA =====
+const GAMES = ["Blox Fruits","Da Hood","Pet Simulator","Anime Fighters","Arsenal"];
+
+let me = JSON.parse(localStorage.getItem("me")||"null");
+let scripts = JSON.parse(localStorage.getItem("scripts")||"[]");
+let ranks = JSON.parse(localStorage.getItem("ranks")||"{}");
+
+// ===== LOG ADMIN =====
+let logs = JSON.parse(localStorage.getItem("logs") || "[]");
+function addLog(text){
+  const time = new Date().toLocaleString();
+  logs.unshift(`[${time}] ${text}`);
+  localStorage.setItem("logs", JSON.stringify(logs));
+}
+function renderLogs(){
+  logBox.textContent = logs.join("\n\n") || "Chưa có log";
+}
+function clearLogs(){
+  if(me.role!=="OWNER") return;
+  if(confirm("Xóa toàn bộ log?")){
+    logs=[];
+    localStorage.setItem("logs","[]");
+    renderLogs();
+  }
+}
+
+// ===== INIT GAME =====
+GAMES.forEach(g=>{
+  sGame.innerHTML+=`<option>${g}</option>`;
+  gameFilter.innerHTML+=`<option value="${g}">${g}</option>`;
+});
+gameFilter.innerHTML = `<option value="">All Games</option>` + gameFilter.innerHTML;
+
+// ===== OWNER KEY =====
+function useOwnerKey(){
+  if(localStorage.getItem("ownerActive")){
+    alert("Owner đã kích hoạt ❌"); return;
+  }
+  if(ownerKeyInput.value===OWNER_KEY){
+    localStorage.setItem("me",JSON.stringify({u:"OWNER",role:"OWNER"}));
+    localStorage.setItem("ownerActive","true");
+    addLog("👑 OWNER KEY được sử dụng lần đầu");
+    OWNER_KEY="";
+    alert("Kích hoạt OWNER thành công 👑");
+    location.reload();
+  }else alert("Owner Key sai ❌");
+}
+if(localStorage.getItem("ownerActive")) ownerKeyBox.style.display="none";
+
+// ===== LOGIN =====
+function login(){
+  if(localStorage.getItem("ownerActive")){
+    me = JSON.parse(localStorage.getItem("me"));
+  }else if(ranks[lu.value]){
+    me = {u:lu.value, role:ranks[lu.value]};
+  }else{
+    alert("Không có quyền"); return;
+  }
+  localStorage.setItem("me",JSON.stringify(me));
+  loginBox.classList.add("hidden");
+  applyUI();
+}
+function logout(){
+  localStorage.removeItem("me");
+  location.reload();
+}
+
+// ===== UI =====
+function applyUI(){
+  adminPanel.classList.add("hidden");
+  rankPanel.classList.add("hidden");
+  logPanel.classList.add("hidden");
+
+  if(me.role==="OWNER"){
+    adminPanel.classList.remove("hidden");
+    rankPanel.classList.remove("hidden");
+    logPanel.classList.remove("hidden");
+    renderLogs();
+  }
+  if(me.role==="ADMIN"){
+    adminPanel.classList.remove("hidden");
+  }
+}
+if(me){loginBox.classList.add("hidden");applyUI();}
+
+// ===== RANK =====
+function setRank(){
+  if(me.role!=="OWNER")return;
+  ranks[rankUser.value]=rankRole.value;
+  localStorage.setItem("ranks",JSON.stringify(ranks));
+  addLog(`👑 OWNER cấp ${rankRole.value} cho ${rankUser.value}`);
+  alert("Đã cấp rank");
+  rankUser.value="";
+}
+function removeRank(){
+  if(me.role!=="OWNER")return;
+  addLog(`👑 OWNER thu hồi quyền của ${rankUser.value}`);
+  delete ranks[rankUser.value];
+  localStorage.setItem("ranks",JSON.stringify(ranks));
+  alert("Đã thu hồi quyền");
+  rankUser.value="";
+}
+
+// ===== SCRIPT =====
+function addScript(){
+  scripts.unshift({
+    name:sName.value||"No Name",
+    game:sGame.value,
+    code:sCode.value,
+    copies:0
+  });
+  localStorage.setItem("scripts",JSON.stringify(scripts));
+  addLog(`🛡️ ${me.role}: ${me.u} ➕ thêm script "${sName.value}"`);
+  sName.value=sCode.value="";
+  render();
+}
+function copyCode(i){
+  scripts[i].copies++;
+  navigator.clipboard.writeText(scripts[i].code);
+  localStorage.setItem("scripts",JSON.stringify(scripts));
+  render();
+}
+
+// ===== RENDER =====
+function render(){
+  list.innerHTML="";
+  const q=search.value.toLowerCase();
+  const gf=gameFilter.value;
+  scripts.forEach((s,i)=>{
+    if(q && !s.name.toLowerCase().includes(q))return;
+    if(gf && s.game!==gf)return;
+    list.innerHTML+=`
+    <div class="card">
+      <h3>${s.name}</h3>
+      <div class="badge ok">🎮 ${s.game}</div>
+      <pre>${s.code}</pre>
+      <button onclick="copyCode(${i})">📋 Copy (${s.copies})</button>
+    </div>`;
+  });
+}
+render();
+</script>
+</body>
+</html>
